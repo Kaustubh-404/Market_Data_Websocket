@@ -1,6 +1,4 @@
 
-Here is your complete `README.md` file in a single markdown block:
-
 ```md
 # Binance Market Data WebSocket Implementation
 

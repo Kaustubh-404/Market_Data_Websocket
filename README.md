@@ -1,5 +1,4 @@
 
-```md
 # Binance Market Data WebSocket Implementation
 
 This project provides a real-time candlestick chart visualization for cryptocurrency market data using Binance's WebSocket API. It supports toggling between multiple cryptocurrencies, selecting time intervals, and maintaining historical data for each coin.

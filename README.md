@@ -66,7 +66,7 @@ This project provides a real-time candlestick chart visualization for cryptocurr
    npm run dev
    ```
 
-4. Open your browser at `http://localhost:3000` to view the application.
+4. Open your browser at `http://localhost:5173` to view the application.
 
 ## Usage
 

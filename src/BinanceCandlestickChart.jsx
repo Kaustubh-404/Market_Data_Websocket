@@ -1,11 +1,103 @@
+// import React, { useState, useEffect, useRef, useCallback } from 'react';
+// import { Chart, CategoryScale, LinearScale, TimeScale } from 'chart.js';
+// import { CandlestickController, CandlestickElement } from 'chartjs-chart-financial';
+// import 'chartjs-adapter-date-fns';
+// import 'chartjs-plugin-zoom';
+// import { Moon, Sun } from 'lucide-react';
+
+// Chart.register(CategoryScale, LinearScale, TimeScale, CandlestickController, CandlestickElement);
+
+// const COINS = ['ethusdt', 'bnbusdt', 'dotusdt'];
+// const INTERVALS = ['1m', '3m', '5m'];
+// const MAX_CANDLES = 100;
+
+// const BinanceCandlestickChart = () => {
+//   const [selectedCoin, setSelectedCoin] = useState('ethusdt');
+//   const [selectedInterval, setSelectedInterval] = useState('1m');
+//   const [darkMode, setDarkMode] = useState(() => {
+//     const savedMode = localStorage.getItem('darkMode');
+//     return savedMode !== null ? JSON.parse(savedMode) : true;
+//   });
+//   const chartRef = useRef(null);
+//   const chartInstanceRef = useRef(null);
+//   const historicalDataRef = useRef({});
+
+//   const createChart = useCallback(() => {
+//     const ctx = document.getElementById('candlestickChart').getContext('2d');
+//     const chartData = historicalDataRef.current[selectedCoin]?.[selectedInterval] || [];
+
+//     chartInstanceRef.current = new Chart(ctx, {
+//       type: 'candlestick',
+//       data: {
+//         datasets: [{
+//           label: `${selectedCoin.toUpperCase()} Candlestick`,
+//           data: chartData,
+//         }],
+//       },
+//       options: {
+//         responsive: true,
+//         maintainAspectRatio: false,
+//         scales: {
+//           x: {
+//             type: 'time',
+//             time: { unit: 'minute', tooltipFormat: 'll HH:mm' },
+//             title: { display: true, text: 'Time' },
+//             ticks: { color: darkMode ? 'white' : 'black' },
+//             grid: { color: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' },
+//           },
+//           y: { 
+//             title: { display: true, text: 'Price' },
+//             position: 'right',
+//             ticks: { color: darkMode ? 'white' : 'black' },
+//             grid: { color: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' },
+//           },
+//         },
+//         plugins: {
+//           zoom: {
+//             pan: { enabled: true, mode: 'x' },
+//             zoom: {
+//               wheel: { enabled: true },
+//               pinch: { enabled: true },
+//               mode: 'x',
+//             },
+//           },
+//           legend: {
+//             display: false,
+//           },
+//         },
+//         animation: false,
+//         transitions: {
+//           active: {
+//             animation: {
+//               duration: 0 
+//             }
+//           }
+//         },
+//         elements: {
+//           candlestick: {
+//             wickColor: darkMode ? 'rgba(255, 255, 255, 0.75)' : 'rgba(0, 0, 0, 0.75)',
+//             color: {
+//               up: 'rgba(0, 255, 0, 1)',
+//               down: 'rgba(255, 0, 0, 1)',
+//             },
+//             borderColor: {
+//               up: 'rgba(0, 255, 0, 1)',
+//               down: 'rgba(255, 0, 0, 1)',
+//             },
+//           }
+//         },
+//       },
+//     });
+//   }, [selectedCoin, selectedInterval, darkMode]);
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Chart, CategoryScale, LinearScale, TimeScale } from 'chart.js';
+import { Chart, CategoryScale, LinearScale, TimeScale, Tooltip } from 'chart.js';
 import { CandlestickController, CandlestickElement } from 'chartjs-chart-financial';
 import 'chartjs-adapter-date-fns';
 import 'chartjs-plugin-zoom';
 import { Moon, Sun } from 'lucide-react';
 
-Chart.register(CategoryScale, LinearScale, TimeScale, CandlestickController, CandlestickElement);
+Chart.register(CategoryScale, LinearScale, TimeScale, CandlestickController, CandlestickElement, Tooltip);
 
 const COINS = ['ethusdt', 'bnbusdt', 'dotusdt'];
 const INTERVALS = ['1m', '3m', '5m'];
@@ -40,7 +132,7 @@ const BinanceCandlestickChart = () => {
         scales: {
           x: {
             type: 'time',
-            time: { unit: 'minute', tooltipFormat: 'll HH:mm' },
+            time: { unit: 'minute', tooltipFormat: 'PP pp' },
             title: { display: true, text: 'Time' },
             ticks: { color: darkMode ? 'white' : 'black' },
             grid: { color: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' },
@@ -64,6 +156,27 @@ const BinanceCandlestickChart = () => {
           legend: {
             display: false,
           },
+          tooltip: {
+            enabled: true,
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              label: (context) => {
+                const candle = context.raw;
+                return [
+                  `Open: ${candle.o.toFixed(2)}`,
+                  `High: ${candle.h.toFixed(2)}`,
+                  `Low: ${candle.l.toFixed(2)}`,
+                  `Close: ${candle.c.toFixed(2)}`,
+                ];
+              },
+            },
+            backgroundColor: darkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+            titleColor: darkMode ? 'white' : 'black',
+            bodyColor: darkMode ? 'white' : 'black',
+            borderColor: darkMode ? 'white' : 'black',
+            borderWidth: 1,
+          },
         },
         animation: false,
         transitions: {
@@ -85,6 +198,10 @@ const BinanceCandlestickChart = () => {
               down: 'rgba(255, 0, 0, 1)',
             },
           }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index',
         },
       },
     });

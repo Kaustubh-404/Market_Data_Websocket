@@ -50,8 +50,8 @@ This project provides a real-time candlestick chart visualization for cryptocurr
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-username/binance-websocket-chart.git
-   cd binance-websocket-chart
+   git clone https://github.com/Kaustubh-404/Market_Data_Websocket.git
+   cd Market_Data_Websocket
    ```
 
 2. Install the dependencies:
@@ -107,31 +107,12 @@ wss://stream.binance.com:9443/ws/ethusdt@kline_1m
 
 - The app stores historical chart data in local storage. When you switch back to a previously selected cryptocurrency, the chart will reload the saved data and append new candlesticks in real-time.
   
-## Project Structure
-
-```plaintext
-src/
-├── components/
-│   ├── Chart.js               # Candlestick chart component
-│   ├── CoinSelector.js        # Dropdown for selecting cryptocurrencies
-│   ├── IntervalSelector.js    # Dropdown for selecting time intervals
-│   ├── DarkModeToggle.js      # Dark mode switch component
-├── styles/
-│   └── tailwind.css           # Tailwind CSS styles
-├── App.js                     # Root component
-├── index.js                   # Entry point of the React app
-```
-
 ## Future Enhancements
 
 - **Additional Cryptocurrencies**: Add more cryptocurrency pairs to the dropdown.
 - **Chart Customization**: Allow users to customize chart views (e.g., add technical indicators).
 - **Error Handling**: Improve WebSocket error handling and implement reconnection strategies.
 - **Performance Optimization**: Optimize chart rendering for high-frequency data updates.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 ```
 
 

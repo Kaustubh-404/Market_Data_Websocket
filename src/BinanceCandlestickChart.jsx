@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Chart, CategoryScale, LinearScale, TimeScale } from 'chart.js';
 import { CandlestickController, CandlestickElement } from 'chartjs-chart-financial';
 import 'chartjs-adapter-date-fns';
@@ -10,95 +9,29 @@ Chart.register(CategoryScale, LinearScale, TimeScale, CandlestickController, Can
 
 const COINS = ['ethusdt', 'bnbusdt', 'dotusdt'];
 const INTERVALS = ['1m', '3m', '5m'];
+const MAX_CANDLES = 100;
 
 const BinanceCandlestickChart = () => {
   const [selectedCoin, setSelectedCoin] = useState('ethusdt');
   const [selectedInterval, setSelectedInterval] = useState('1m');
-  const [data, setData] = useState([]);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    const savedMode = localStorage.getItem('darkMode');
+    return savedMode !== null ? JSON.parse(savedMode) : true;
+  });
   const chartRef = useRef(null);
+  const chartInstanceRef = useRef(null);
+  const historicalDataRef = useRef({});
 
-  useEffect(() => {
-    const connectWebSocket = () => {
-      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedCoin}@kline_${selectedInterval}`);
-
-      ws.onopen = () => console.log('WebSocket connection opened');
-
-      ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message?.k) {
-          const candle = {
-            time: message.k.t,
-            open: parseFloat(message.k.o),
-            high: parseFloat(message.k.h),
-            low: parseFloat(message.k.l),
-            close: parseFloat(message.k.c),
-          };
-          updateChartData(candle);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setTimeout(connectWebSocket, 1000);
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket connection closed');
-        setTimeout(connectWebSocket, 1000);
-      };
-
-      return () => ws.close();
-    };
-
-    connectWebSocket();
-  }, [selectedCoin, selectedInterval]);
-
-  const updateChartData = (newCandle) => {
-    if (chartRef.current) {
-      const chart = chartRef.current;
-      const dataset = chart.data.datasets[0];
-      const lastCandle = dataset.data[dataset.data.length - 1];
-
-      if (lastCandle && lastCandle.x === newCandle.time) {
-        // Update the existing candle
-        lastCandle.o = newCandle.open;
-        lastCandle.h = Math.max(lastCandle.h, newCandle.high);
-        lastCandle.l = Math.min(lastCandle.l, newCandle.low);
-        lastCandle.c = newCandle.close;
-      } else {
-        // Add a new candle
-        dataset.data.push({
-          x: newCandle.time,
-          o: newCandle.open,
-          h: newCandle.high,
-          l: newCandle.low,
-          c: newCandle.close,
-        });
-
-       
-        if (dataset.data.length > 100) { // Keep last 100 candles
-          dataset.data.shift();
-        }
-      }
-
-      chart.update('none'); 
-    }
-  };
-
-  useEffect(() => {
-    if (chartRef.current) {
-      chartRef.current.destroy();
-    }
-
+  const createChart = useCallback(() => {
     const ctx = document.getElementById('candlestickChart').getContext('2d');
+    const chartData = historicalDataRef.current[selectedCoin]?.[selectedInterval] || [];
 
-    chartRef.current = new Chart(ctx, {
+    chartInstanceRef.current = new Chart(ctx, {
       type: 'candlestick',
       data: {
         datasets: [{
           label: `${selectedCoin.toUpperCase()} Candlestick`,
-          data: [],
+          data: chartData,
         }],
       },
       options: {
@@ -132,7 +65,7 @@ const BinanceCandlestickChart = () => {
             display: false,
           },
         },
-        animation: false, 
+        animation: false,
         transitions: {
           active: {
             animation: {
@@ -156,6 +89,100 @@ const BinanceCandlestickChart = () => {
       },
     });
   }, [selectedCoin, selectedInterval, darkMode]);
+
+  const updateChartData = useCallback((newCandle) => {
+    if (!historicalDataRef.current[selectedCoin]) {
+      historicalDataRef.current[selectedCoin] = {};
+    }
+    if (!historicalDataRef.current[selectedCoin][selectedInterval]) {
+      historicalDataRef.current[selectedCoin][selectedInterval] = [];
+    }
+
+    const dataset = historicalDataRef.current[selectedCoin][selectedInterval];
+    const lastCandle = dataset[dataset.length - 1];
+
+    if (lastCandle && lastCandle.x === newCandle.time) {
+      lastCandle.o = newCandle.open;
+      lastCandle.h = Math.max(lastCandle.h, newCandle.high);
+      lastCandle.l = Math.min(lastCandle.l, newCandle.low);
+      lastCandle.c = newCandle.close;
+    } else {
+      dataset.push({
+        x: newCandle.time,
+        o: newCandle.open,
+        h: newCandle.high,
+        l: newCandle.low,
+        c: newCandle.close,
+      });
+
+      if (dataset.length > MAX_CANDLES) {
+        dataset.shift();
+      }
+    }
+
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.data.datasets[0].data = dataset;
+      chartInstanceRef.current.update('none');
+    }
+  }, [selectedCoin, selectedInterval]);
+
+  const fetchInitialData = useCallback(async () => {
+    try {
+      const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${selectedCoin.toUpperCase()}&interval=${selectedInterval}&limit=${MAX_CANDLES}`);
+      const data = await response.json();
+      const initialCandles = data.map(candle => ({
+        x: candle[0],
+        o: parseFloat(candle[1]),
+        h: parseFloat(candle[2]),
+        l: parseFloat(candle[3]),
+        c: parseFloat(candle[4]),
+      }));
+
+      if (!historicalDataRef.current[selectedCoin]) {
+        historicalDataRef.current[selectedCoin] = {};
+      }
+      historicalDataRef.current[selectedCoin][selectedInterval] = initialCandles;
+
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.data.datasets[0].data = initialCandles;
+        chartInstanceRef.current.update('none');
+      } else {
+        createChart();
+      }
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+    }
+  }, [selectedCoin, selectedInterval, createChart]);
+
+  useEffect(() => {
+    fetchInitialData();
+
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedCoin}@kline_${selectedInterval}`);
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message?.k) {
+        const candle = {
+          time: message.k.t,
+          open: parseFloat(message.k.o),
+          high: parseFloat(message.k.h),
+          low: parseFloat(message.k.l),
+          close: parseFloat(message.k.c),
+        };
+        updateChartData(candle);
+      }
+    };
+
+    return () => ws.close();
+  }, [selectedCoin, selectedInterval, updateChartData, fetchInitialData]);
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+    }
+    createChart();
+  }, [darkMode, createChart]);
 
   return (
     <div className={`p-4 min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'}`}>
@@ -200,7 +227,7 @@ const BinanceCandlestickChart = () => {
           </select>
         </div>
 
-        <div className=" pt-6 flex items-center">
+        <div className="pt-6 flex items-center">
           <label htmlFor="darkModeToggle" className="mr-2">
             {darkMode ? <Moon size={20} /> : <Sun size={20} />}
           </label>
